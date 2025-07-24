@@ -1,0 +1,21 @@
+[project]
+name = "psy-data-gen"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ddtrace>=3.10.2",
+    "openai>=1.97.1",
+    "pydantic>=2.11.7",
+    "streamlit>=1.47.0",
+]
+
+[[tool.uv.index]]
+url = "https://mirrors.cloud.tencent.com/pypi/simple"
+default = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
