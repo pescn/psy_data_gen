@@ -11,3 +11,4 @@ wheels/
 output/
 .env
 .venv/
+.DS_Store
