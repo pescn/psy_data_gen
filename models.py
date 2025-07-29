@@ -3,7 +3,7 @@
 使用 Pydantic BaseModel 定义所有数据结构
 """
 
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Literal
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -11,35 +11,35 @@ from enum import Enum
 class CounselorState(str, Enum):
     """咨询师状态枚举"""
 
-    INTRODUCTION = "introduction"  # 引入与建立关系阶段
-    EXPLORATION = "exploration"  # 深入探索阶段
-    ASSESSMENT = "assessment"  # 评估诊断阶段
-    SCALE_RECOMMENDATION = "scale_recommendation"  # 量表推荐阶段
+    INTRODUCTION = "引入与建立关系阶段"  # 引入与建立关系阶段
+    EXPLORATION = "深入探索阶段"  # 深入探索阶段
+    ASSESSMENT = "评估诊断阶段"  # 评估诊断阶段
+    SCALE_RECOMMENDATION = "量表推荐阶段"  # 量表推荐阶段
 
 
 class TherapyApproach(str, Enum):
     """咨询流派枚举"""
 
-    CBT = "cognitive_behavioral_therapy"  # 认知行为疗法
-    HUMANISTIC = "humanistic_therapy"  # 人本主义疗法
-    PSYCHOANALYTIC = "psychoanalytic"  # 精神分析取向
-    SOLUTION_FOCUSED = "solution_focused"  # 解决焦点疗法
-    MINDFULNESS = "mindfulness_therapy"  # 正念疗法
+    CBT = "认知行为疗法"  # 认知行为疗法
+    HUMANISTIC = "人本主义疗法"  # 人本主义疗法
+    PSYCHOANALYTIC = "精神分析取向"  # 精神分析取向
+    SOLUTION_FOCUSED = "解决焦点疗法"  # 解决焦点疗法
+    MINDFULNESS = "正念疗法"  # 正念疗法
 
 
 class PsychologicalIssue(str, Enum):
     """心理问题类型枚举"""
 
-    ACADEMIC_ANXIETY = "academic_anxiety"  # 学业焦虑
-    SOCIAL_PHOBIA = "social_phobia"  # 社交恐惧
-    DEPRESSION = "depression"  # 抑郁情绪
-    PROCRASTINATION = "procrastination"  # 拖延症
-    OCD_SYMPTOMS = "ocd_symptoms"  # 强迫症状
-    ADAPTATION_ISSUES = "adaptation_issues"  # 适应性问题
-    RELATIONSHIP_ISSUES = "relationship_issues"  # 恋爱情感问题
-    FAMILY_CONFLICTS = "family_conflicts"  # 家庭关系问题
-    IDENTITY_CONFUSION = "identity_confusion"  # 自我认同困惑
-    SLEEP_PROBLEMS = "sleep_problems"  # 睡眠问题
+    ACADEMIC_ANXIETY = "学业焦虑"  # 学业焦虑
+    SOCIAL_PHOBIA = "社交恐惧"  # 社交恐惧
+    DEPRESSION = "抑郁情绪"  # 抑郁情绪
+    PROCRASTINATION = "拖延症"  # 拖延症
+    OCD_SYMPTOMS = "强迫症状"  # 强迫症状
+    ADAPTATION_ISSUES = "适应性问题"  # 适应性问题
+    RELATIONSHIP_ISSUES = "恋爱情感问题"  # 恋爱情感问题
+    FAMILY_CONFLICTS = "家庭关系问题"  # 家庭关系问题
+    IDENTITY_CONFUSION = "自我认同困惑"  # 自我认同困惑
+    SLEEP_PROBLEMS = "睡眠问题"  # 睡眠问题
 
 
 class EmotionState(str, Enum):
@@ -61,17 +61,25 @@ class EmotionState(str, Enum):
 class ConversationMessage(BaseModel):
     """对话消息模型"""
 
-    role: str = Field(..., description="角色：student 或 counselor")
+    role: Literal["student", "counselor"] = Field(..., description="角色")
     content: str = Field(..., description="消息内容")
     state: Optional[str] = Field(None, description="当前状态（仅咨询师有状态）")
     emotion: Optional[EmotionState] = Field(None, description="当前情绪状态")
     round_number: int = Field(..., description="对话轮数")
 
 
+class StudentBasicInfo(BaseModel):
+    """学生基本信息模型，用于模拟在预约系统中咨询师可以看到获取的学生信息"""
+
+    age: int = Field(..., description="年龄")
+    gender: str = Field(..., description="性别")
+    grade: str = Field(..., description="年级")
+    major: str = Field(..., description="专业")
+
+
 class StudentBackground(BaseModel):
     """学生背景信息模型"""
 
-    name: str = Field(..., description="学生姓名")
     age: int = Field(..., description="年龄")
     gender: str = Field(..., description="性别")
     grade: str = Field(..., description="年级")
@@ -85,14 +93,18 @@ class StudentBackground(BaseModel):
     )
     symptom_description: str = Field(..., description="症状描述")
 
+    def to_basic_info(self) -> StudentBasicInfo:
+        """转换为学生基本信息模型"""
+        return StudentBasicInfo(
+            age=self.age, gender=self.gender, grade=self.grade, major=self.major
+        )
+
 
 class CounselorBackground(BaseModel):
     """咨询师背景信息模型"""
 
-    name: str = Field(..., description="咨询师姓名")
     therapy_approach: TherapyApproach = Field(..., description="咨询流派")
     communication_style: str = Field(..., description="沟通习惯和风格")
-    experience_years: int = Field(..., description="从业年限")
     specialization: List[str] = Field(..., description="专业领域")
 
 
@@ -101,9 +113,7 @@ class BackgroundInfo(BaseModel):
 
     student_info: StudentBackground
     counselor_info: CounselorBackground
-    generation_params: Dict[str, Any] = Field(
-        default_factory=dict, description="生成参数"
-    )
+    initial_question: str = Field(..., description="学生首次咨询的问题")
 
 
 class StateTransition(BaseModel):
@@ -177,3 +187,11 @@ class RiskAssessment(BaseModel):
     overall_risk: int = Field(default=0, ge=0, le=5, description="总体风险等级")
     risk_indicators: List[str] = Field(default_factory=list, description="风险指标")
     emergency_required: bool = Field(default=False, description="是否需要紧急干预")
+
+
+class BackgroundContext(BaseModel):
+    """背景信息生成上下文"""
+
+    mode: str = Field(..., description="生成模式")
+    user_background: Optional[str] = Field("", description="用户背景信息")
+    psychological_issue: Optional[str] = Field("", description="心理问题")
