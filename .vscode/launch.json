@@ -1,0 +1,53 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug CLI Main with DDTrace",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "ddtrace.commands.ddtrace_run",
+            "args": [
+                "python",
+                "cli_main.py"
+            ],
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "subProcess": true
+        },
+        {
+            "name": "Debug CLI Main (Simple)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/cli_main.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": true,
+            "stopOnEntry": false
+        },
+        {
+            "name": "Debug with UV",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/cli_main.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/.env",
+            "justMyCode": true,
+            "stopOnEntry": false
+        }
+    ]
+}
