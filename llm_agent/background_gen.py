@@ -6,6 +6,8 @@
 import random
 from typing import Any
 
+from traceloop.sdk.decorators import agent
+
 from .base import Agent
 from constants import (
     PSYCHOLOGICAL_ISSUES_DATA,
@@ -51,6 +53,7 @@ interface Background {
 """
 
 
+@agent(name="背景生成 Agent", method_name="execute")
 class BackgroundGenerationAgent(Agent[BackgroundContext, BackgroundInfo]):
     """
     背景生成Agent

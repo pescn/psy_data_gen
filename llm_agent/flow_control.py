@@ -5,6 +5,8 @@
 
 from typing import Dict, List, Literal, Optional, Any
 
+from traceloop.sdk.decorators import agent
+
 from .base import Agent, RiskAssessmentMixin
 from models import (
     ConversationMessage,
@@ -132,6 +134,7 @@ class FlowControlResult(BaseModel):
     next_focus: str = Field(..., description="下一轮咨询应该关注的重点")
 
 
+@agent(name="流程控制 Agent", method_name="execute")
 class FlowControlAgent(
     Agent[FlowControlContext, FlowControlResult], RiskAssessmentMixin
 ):

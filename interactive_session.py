@@ -4,6 +4,7 @@
 """
 
 import asyncio
+from collections import Counter
 import json
 import sys
 from typing import List, Dict, Any
@@ -11,6 +12,10 @@ import uuid
 from datetime import datetime
 import os
 
+from traceloop.sdk import Traceloop
+from traceloop.sdk.decorators import workflow, task
+
+from llm_agent.quality_assess import QualityAssessmentAgent, QualityAssessmentContext
 from models import (
     BackgroundContext,
     BackgroundInfo,
@@ -21,6 +26,9 @@ from llm_agent.background_gen import BackgroundGenerationAgent
 from llm_agent.student import StudentBot
 from llm_agent.counselor import CounselorBot
 from llm_agent.flow_control import FlowControlAgent, FlowControlContext
+from settings import settings
+
+Traceloop.init(api_key=settings.TRACELOOP_API_KEY, disable_batch=True)
 
 
 class Colors:
@@ -150,6 +158,7 @@ class SessionManager:
         self.counselor_bot: CounselorBot = None
         self.flow_control_agent: FlowControlAgent = None
 
+    @task(name="initialize_session", version=1)
     async def initialize_session(self):
         """
         异步初始化会话，生成背景信息
@@ -215,6 +224,7 @@ class SessionManager:
                 print_colored("\n用户中断程序", Colors.FAIL)
                 sys.exit(0)
 
+    @task(name="conversation_loop", version=1)
     async def run(self):
         """
         循环调度咨询师Bot、流程控制Agent和学生Bot
@@ -479,6 +489,7 @@ class SessionManager:
                 if self.counselor_bot
                 else None,
             },
+            "quality_assessment": await self.quality_assess(),
         }
 
         # 创建导出目录
@@ -496,7 +507,36 @@ class SessionManager:
         except Exception as e:
             print_colored(f"❌ 导出失败: {str(e)}", Colors.FAIL)
 
+    @task(name="quality_assess", version=1)
+    async def quality_assess(self):
+        rounds_per_state = dict(
+            Counter(
+                [
+                    round_data["flow_result"]["state_transition"]["current_state"]
+                    for round_data in self.flow_control_results
+                ]
+            )
+        )
+        counseling_trajectory = {
+            "state_transitions": self.state_transition_history,
+            "total_rounds": self.current_round,
+            "rounds_per_state": rounds_per_state,
+        }
+        quality_context = QualityAssessmentContext(
+            background_info=self.background,
+            conversation_history=self.conversation_history,
+            counseling_trajectory=counseling_trajectory,
+        )
+        quality_assessment_agent = QualityAssessmentAgent()
+        assessment_result = await quality_assessment_agent.execute(quality_context)
+        print_colored("质量评估结果:", Colors.OKGREEN)
+        print_colored(
+            json.dumps(assessment_result.model_dump(), indent=2, ensure_ascii=False)
+        )
+        return assessment_result
 
+
+@workflow(name="心理咨询对话生成器", version=1)
 async def main():
     """
     主函数

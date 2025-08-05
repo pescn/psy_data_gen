@@ -5,6 +5,8 @@
 
 from typing import Dict, List, Literal, Optional, Any
 
+from traceloop.sdk.decorators import agent
+
 from .base import Agent
 from models import (
     ConversationMessage,
@@ -421,6 +423,7 @@ interface QualityAssessmentResult {
 """
 
 
+@agent(name="质量评估 Agent", method_name="execute")
 class QualityAssessmentAgent(Agent[QualityAssessmentContext, QualityAssessmentResult]):
     """
     质量评估Agent

@@ -6,6 +6,8 @@
 import random
 from typing import Dict, List, Any, Optional
 
+from traceloop.sdk.decorators import agent
+
 from llm_agent.base import ChatBot, RiskAssessmentMixin, convert_history_for_student
 from models import (
     PsychologicalIssue,
@@ -15,6 +17,7 @@ from models import (
 )
 
 
+@agent(name="学生 Bot", method_name="chat")
 class StudentBot(ChatBot, RiskAssessmentMixin):
     """
     学生Bot

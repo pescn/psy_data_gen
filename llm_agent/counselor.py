@@ -5,6 +5,8 @@
 
 from typing import Dict, List, Any, Optional
 
+from traceloop.sdk.decorators import agent
+
 from llm_agent.base import ChatBot, convert_history_for_counselor
 from models import (
     ConversationMessage,
@@ -18,6 +20,7 @@ from constants import (
 )
 
 
+@agent(name="咨询师 Bot", method_name="chat")
 class CounselorBot(ChatBot):
     """
     咨询师Bot

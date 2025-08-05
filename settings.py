@@ -88,11 +88,7 @@ class SystemConfig(BaseSettings):
     LLM_MODEL: str = "deepseek-v3"  # 默认模型名称
 
     # ==================== 监控和日志配置 ====================
-    DD_LLMOBS_ML_APP: str = "psy_data_gen"  # 应用名称
-    DD_API_KEY: str = ""  # DataDog API Key
-    DD_SITE: str = "datadoghq.com"  # DataDog站点
-    DD_LLMOBS_ENABLED: int = 1  # 是否启用LLM监控
-    DD_SERVICE: str = "psy_data_gen"  # DataDog服务名称
+    TRACELOOP_API_KEY: str = ""  # Traceloop API Key
 
     def ensure_output_dirs(self):
         """确保输出目录存在"""
