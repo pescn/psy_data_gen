@@ -14,6 +14,7 @@ import os
 
 from traceloop.sdk import Traceloop
 from traceloop.sdk.decorators import workflow, task
+from openai.types import CompletionUsage
 
 from llm_agent.quality_assess import QualityAssessmentAgent, QualityAssessmentContext
 from models import (
@@ -158,6 +159,8 @@ class SessionManager:
         self.counselor_bot: CounselorBot = None
         self.flow_control_agent: FlowControlAgent = None
 
+        self.usages: list[CompletionUsage] = []
+
     @task(name="initialize_session", version=1)
     async def initialize_session(self):
         """
@@ -171,12 +174,11 @@ class SessionManager:
             )
             self.background = background_result
             self.initial_question = background_result.initial_question
+            self.usages.append(self.background_agent.usage)
             print_colored("✅ 背景信息生成成功！", Colors.OKGREEN)
             print_colored(
                 json.dumps(self.background.model_dump(), indent=2, ensure_ascii=False)
             )
-            print(f"  {self.initial_question}")
-            print()
         except Exception as e:
             print_colored(f"❌ 背景生成失败: {str(e)}", Colors.FAIL)
             sys.exit(1)
@@ -304,6 +306,7 @@ class SessionManager:
             counselor_response = await self.counselor_bot.chat(
                 self.conversation_history
             )
+            self.usages.append(self.counselor_bot.usage)
             counselor_msg = ConversationMessage(
                 role="counselor",
                 content=counselor_response,
@@ -337,6 +340,7 @@ class SessionManager:
                 current_student_emotion=self.student_bot.current_emotion,
             )
             flow_result = await self.flow_control_agent.execute(flow_context)
+            self.usages.append(self.flow_control_agent.usage)
 
             # 记录流程控制结果
             self.flow_control_results.append(
@@ -449,6 +453,7 @@ class SessionManager:
             # 学生回复
             print_colored("正在生成学生回复...", Colors.OKCYAN)
             student_response = await self.student_bot.chat(self.conversation_history)
+            self.usages.append(self.student_bot.usage)
             student_msg = ConversationMessage(
                 role="student",
                 content=student_response,
@@ -470,6 +475,11 @@ class SessionManager:
 
         print_header("对话结束")
         await self.export_session_data()
+
+    @property
+    def usage_summary(self) -> list[Dict[str, Any]]:
+        """获取所有使用的API调用信息"""
+        return [usage.model_dump() for usage in self.usages]
 
     async def export_session_data(self):
         """
@@ -504,6 +514,7 @@ class SessionManager:
                 else None,
             },
             "quality_assessment": await self.quality_assess(),
+            "usages": self.usage_summary,
         }
 
         # 创建导出目录
@@ -543,6 +554,7 @@ class SessionManager:
         )
         quality_assessment_agent = QualityAssessmentAgent()
         assessment_result = await quality_assessment_agent.execute(quality_context)
+        self.usages.append(quality_assessment_agent.usage)
         print_colored("质量评估结果:", Colors.OKGREEN)
         print_colored(
             json.dumps(assessment_result.model_dump(), indent=2, ensure_ascii=False)
@@ -576,6 +588,8 @@ async def main():
         print_colored(f"自动模式启动，最大轮次: {args.max_rounds}", Colors.OKGREEN)
 
     await manager.run()
+    print_colored("会话已结束，成本信息如下：", Colors.OKGREEN)
+    print(json.dumps(manager.usages, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

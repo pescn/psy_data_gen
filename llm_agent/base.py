@@ -109,6 +109,7 @@ class ChatBot:
         """
         self.current_round = 0
         self.llm_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+        self.usage = None
 
     def convert_history_to_messages(
         self, conversation_history: List[ConversationMessage]
@@ -163,6 +164,7 @@ class ChatBot:
                 max_tokens=self.max_tokens,
             )
 
+            self.usage = response.usage
             return response.choices[0].message.content.strip()
 
         except Exception as e:
@@ -243,6 +245,7 @@ class Agent(Generic[TContext, TResult]):
         # LLM客户端配置（子类中具体实现）
         self.llm_client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
         self.config = kwargs
+        self.usage = None
 
     def prompt(self, context: TContext) -> str:
         """
@@ -283,6 +286,7 @@ class Agent(Generic[TContext, TResult]):
             resp_content = response.choices[0].message.content.strip()
             resp_data = self.clean_response_data(json.loads(resp_content))
             self.data = self.result_class(**resp_data)
+            self.usage = response.usage
             return self.data
 
         except Exception as e:
