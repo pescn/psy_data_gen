@@ -401,12 +401,13 @@ STATE_TRANSITION_GUIDE = {
             "对咨询师表现出信任",
             "开始询问咨询相关问题",
         ],
+        "minimum_rounds": 3,
     },
     CounselorState.EXPLORATION: {
         "entry_condition": "学生开始信任，愿意分享更多信息",
         "exit_condition": "对核心问题有了全面深入的了解",
         "key_goals": ["深入探索", "系统收集信息", "保持情感支持"],
-        "typical_duration": "6-12轮",
+        "typical_duration": "4-6轮",
         "transition_indicators": [
             "核心信息已收集充分",
             "学生情绪状态稳定",
@@ -414,25 +415,28 @@ STATE_TRANSITION_GUIDE = {
             "咨询师已形成初步判断",
             "学生准备接受专业反馈",
         ],
+        "minimum_rounds": 4,
     },
     CounselorState.ASSESSMENT: {
         "entry_condition": "信息收集充分，可以进行专业判断",
         "exit_condition": "形成初步诊断，学生理解和接受",
         "key_goals": ["整合信息", "专业判断", "初步诊断"],
-        "typical_duration": "3-6轮",
+        "typical_duration": "2-3轮",
         "transition_indicators": [
             "学生接受了初步诊断",
             "理解了问题的专业解释",
             "准备进行进一步评估",
             "询问下一步安排",
         ],
+        "minimum_rounds": 2,
     },
     CounselorState.SCALE_RECOMMENDATION: {
         "entry_condition": "完成初步诊断，需要进一步评估",
         "exit_condition": "推荐合适的量表工具",
         "key_goals": ["推荐量表", "解释意义", "后续安排"],
-        "typical_duration": "2-4轮",
+        "typical_duration": "2-3轮",
         "transition_indicators": ["对话自然结束", "学生理解量表用途", "安排了后续评估"],
+        "minimum_rounds": 2,
     },
 }
 

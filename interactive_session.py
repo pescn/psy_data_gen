@@ -224,6 +224,19 @@ class SessionManager:
                 print_colored("\n用户中断程序", Colors.FAIL)
                 sys.exit(0)
 
+    def _get_current_state_round(self) -> int:
+        """
+        获取当前状态持续的轮数
+        """
+        if not self.conversation_history:
+            return 1
+        current_state = self.counselor_bot.current_state
+        return sum(
+            1
+            for state_record in self.counselor_state_history
+            if state_record.get("state") == current_state
+        )
+
     @task(name="conversation_loop", version=1)
     async def run(self):
         """
@@ -315,6 +328,7 @@ class SessionManager:
             flow_context = FlowControlContext(
                 conversation_history=self.conversation_history,
                 current_state=self.counselor_bot.current_state,
+                current_state_round=self._get_current_state_round(),
                 round_number=self.current_round,
                 background_info=self.background,
                 current_student_trust_level=self.student_bot.trust_level,
@@ -508,7 +522,7 @@ class SessionManager:
             print_colored(f"❌ 导出失败: {str(e)}", Colors.FAIL)
 
     @task(name="quality_assess", version=1)
-    async def quality_assess(self):
+    async def quality_assess(self) -> Dict[str, Any]:
         rounds_per_state = dict(
             Counter(
                 [
@@ -533,7 +547,7 @@ class SessionManager:
         print_colored(
             json.dumps(assessment_result.model_dump(), indent=2, ensure_ascii=False)
         )
-        return assessment_result
+        return assessment_result.model_dump()
 
 
 @workflow(name="心理咨询对话生成器", version=1)

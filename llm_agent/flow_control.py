@@ -36,6 +36,7 @@ class FlowControlContext(BaseModel):
 
     conversation_history: List[ConversationMessage] = Field(..., description="对话历史")
     current_state: CounselorState = Field(..., description="当前咨询师状态")
+    current_state_round: int = Field(..., description="当前状态持续轮数")
     round_number: int = Field(..., description="当前轮次")
     background_info: Optional[BackgroundInfo] = Field(None, description="背景信息")
     # 添加当前学生状态信息用于参考
@@ -134,6 +135,73 @@ class FlowControlResult(BaseModel):
     next_focus: str = Field(..., description="下一轮咨询应该关注的重点")
 
 
+format_prompt = """
+```typescript
+/** 学生状态分析 */
+interface StudentStateAnalysis {
+  trust_level: number;  // 信任度评分 (0.0-1.0)
+  trust_level_change: '显著下降' | '轻微下降' | '保持稳定' | '轻微上升' | '显著上升';  // 信任度变化趋势
+  trust_analysis: string;  // 信任度分析说明，要有简要的对话内容支撑，60字以内
+
+  openness_level: number;  // 开放度评分 (0.0-1.0)
+  openness_change: '显著下降' | '轻微下降' | '保持稳定' | '轻微上升' | '显著上升';  // 开放度变化趋势
+  openness_analysis: string; // 简要的开放度分析说明，30字以内
+  
+  information_revealed: number; // 信息透露度评分 (0.0-1.0)
+  information_change: '显著减少' | '轻微减少' | '保持稳定' | '轻微增加' | '显著增加';  // 信息透露变化趋势
+  information_analysis: string;  // 简要的信息透露分析说明，30字以内
+  
+  current_emotion: string;  // 当前情绪状态
+  emotion_change: '明显恶化' | '轻微恶化' | '保持稳定' | '轻微改善' | '明显改善';  // 情绪变化趋势
+  emotion_analysis: string;  // 情绪状态分析说明，60字以内
+  
+  resistance_level: number;  // 抵抗水平 (0.0-1.0)，评估学生对咨询师建议的抵抗程度
+  avoidance_tendency: number;  // 回避倾向 (0.0-1.0)，评估学生对敏感话题的回避程度
+}
+
+/** 咨询轮次分析 */
+interface RoundAnalysis {
+  current_round: number;  // 当前轮次
+  information_saturation: '不充分(0-0.3)' | '部分充分(0.3-0.6)' | '基本充分(0.6-0.8)' | '充分(0.8-1.0)';  // 信息饱和度
+  counselor_effectiveness: '需要改进' | '一般' | '良好' | '优秀';  // 咨询师效果评估
+  stage_completion: number;  // 当前阶段完成度 (0.0-1.0)
+}
+
+/** 状态转换评估 */
+interface StateTransition {
+  need_transition: boolean;  // 是否需要状态转换
+  current_state: "引入与建立关系阶段" | "深入探索阶段" | "评估诊断阶段" | "量表推荐阶段";  // 当前状态
+  recommended_state: "引入与建立关系阶段" | "深入探索阶段" | "评估诊断阶段" | "量表推荐阶段" | null;  // 推荐状态
+  transition_reason: string;  // 具体转换理由
+  confidence_level: '低' | '中' | '高';  // 转换置信度
+}
+
+/** 风险评估 */
+interface RiskAssessment {
+  overall_risk_level: number;  // 总体风险等级 (0-5)
+  suicide_risk: number;  // 自杀风险等级 (0-5)
+  self_harm_risk: number;  // 自伤风险等级 (0-5)
+  harm_others_risk: number;  // 伤害他人风险等级 (0-5)
+  risk_indicators: string[];  // 风险关键词列表
+  emergency_required: boolean;  // 是否需要紧急干预
+  risk_description: string;  // 风险描述
+}
+
+/** 完整的咨询评估结构 */
+interface CounselingAssessment {
+  student_state_analysis: StudentStateAnalysis;
+  round_analysis: RoundAnalysis;
+  state_transition: StateTransition;
+  risk_assessment: RiskAssessment;
+  /** 改进建议列表，控制在4个以内，总字数不超过 200 字 */
+  improvement_suggestions: string[];
+  /** 下一轮重点，控制在80字以内 */
+  next_focus: string;
+}
+```
+"""
+
+
 @agent(name="流程控制 Agent", method_name="execute")
 class FlowControlAgent(
     Agent[FlowControlContext, FlowControlResult], RiskAssessmentMixin
@@ -150,7 +218,7 @@ class FlowControlAgent(
         """
         构建流程控制评估的提示词
         """
-        base_prompt = """# Role: 心理咨询流程控制与状态评估专家
+        base_prompt = f"""# Role: 心理咨询流程控制与状态评估专家
 你是一个专业的心理咨询流程控制专家，负责：
 1. 准确评估学生的心理状态指标（信任度、开放度、信息透露度、情绪状态等）
 2. 分析对话进展并判断是否需要进行状态转换
@@ -219,17 +287,27 @@ class FlowControlAgent(
 3. **证据支持**：每个判断都要有具体的对话内容支撑
 4. **专业判断**：运用心理学知识进行专业分析
 5. **安全优先**：对风险保持高度敏感和谨慎
+
+**重要提醒**：
+1. 所有评分必须基于学生的实际表现，有具体对话内容支撑
+2. 变化趋势要与当前状态进行对比
+3. 重点分析最近3轮对话中学生的表现变化
+4. 风险评估要格外谨慎和敏感
+
+## 输出格式
+请返回一个完整的质量评估JSON对象，下面是其Interface结构：
+{format_prompt}
+请确保生成的 JSON 对象符合上述结构，并且所有字段都包含有效内容。
 """
 
         # 构建完整的提示词
         prompt = (
             base_prompt
-            + self._format_current_session_info(context)
             + self._format_background_info(context.background_info)
             + self._format_current_student_state(context)
             + self._format_conversation_history(context.conversation_history)
-            + self._format_state_guide(context.current_state)
-            + self._format_output_requirements()
+            + self._format_current_session_info(context)
+            + self._format_state_guide(context)
         )
         return prompt
 
@@ -244,8 +322,9 @@ class FlowControlAgent(
 
         return f"""
 ## 当前会话信息
-- 当前咨询师状态：{context.current_state.value}
-- 对话轮数：{context.round_number}
+- 当前咨询状态：{context.current_state.value}
+- 总对话轮数：{context.round_number}
+- 当前状态持续轮数：{context.current_state_round}轮
 - 可能的下一个状态：{next_states_str}
 """
 
@@ -325,81 +404,29 @@ class FlowControlAgent(
             + "\n"
         )
 
-    def _format_state_guide(self, current_state: CounselorState) -> str:
+    def _format_state_guide(self, context: FlowControlContext) -> str:
         """格式化当前状态的转换指导"""
-        guide = STATE_TRANSITION_GUIDE.get(current_state, {})
-        possible_next_states = STATE_TRANSITION_GRAPH.get(current_state, [])
+        guide = STATE_TRANSITION_GUIDE.get(context.current_state, {})
+        current_state_round = context.current_state_round
+        guide_current_state_min_rounds = guide.get("minimum_rounds", 1)
+        round_warning = ""
+        if current_state_round < guide_current_state_min_rounds:
+            round_warning = f"⚠️ 当前状态持续轮数({current_state_round})少于建议的最小轮数({guide_current_state_min_rounds})，可能需要更多时间来完成当前阶段。\n"
+
+        possible_next_states = STATE_TRANSITION_GRAPH.get(context.current_state, [])
 
         return f"""
 ## 状态转换参考信息
-### 当前阶段：{current_state.value}
+### 当前阶段：{context.current_state.value}
 - 进入条件：{guide.get("entry_condition", "未定义")}
 - 退出条件：{guide.get("exit_condition", "未定义")}
 - 关键目标：{", ".join(guide.get("key_goals", []))}
 - 典型持续时间：{guide.get("typical_duration", "未定义")}
 - 转换指标：{", ".join(guide.get("transition_indicators", []))}
-
+{round_warning if round_warning else ""}
 ### 状态转换规则
 - 当前状态只能转换到：{", ".join([state.value for state in possible_next_states]) if possible_next_states else "无（终止状态）"}
 - 不允许状态回退或跳跃
-"""
-
-    def _format_output_requirements(self) -> str:
-        """格式化输出要求"""
-        return """
-## 输出要求
-请返回一个完整的JSON对象，包含以下结构：
-
-```json
-{
-    "student_state_analysis": {
-        "trust_level": 0.0-1.0的数值,
-        "trust_level_change": "显著下降|轻微下降|保持稳定|轻微上升|显著上升",
-        "trust_analysis": "信任度分析说明，要有具体的对话内容支撑",
-        "openness_level": 0.0-1.0的数值,
-        "openness_change": "显著下降|轻微下降|保持稳定|轻微上升|显著上升", 
-        "openness_analysis": "开放度分析说明",
-        "information_revealed": 0.0-1.0的数值,
-        "information_change": "显著减少|轻微减少|保持稳定|轻微增加|显著增加",
-        "information_analysis": "信息透露分析说明",
-        "current_emotion": "情绪状态枚举值",
-        "emotion_change": "明显恶化|轻微恶化|保持稳定|轻微改善|明显改善",
-        "emotion_analysis": "情绪状态分析说明",
-        "resistance_level": 0.0-1.0的数值,
-        "avoidance_tendency": 0.0-1.0的数值
-    },
-    "round_analysis": {
-        "current_round": 轮次数字,
-        "information_saturation": "不充分(0-0.3)|部分充分(0.3-0.6)|基本充分(0.6-0.8)|充分(0.8-1.0)",
-        "counselor_effectiveness": "需要改进|一般|良好|优秀",
-        "stage_completion": 0.0-1.0的数值
-    },
-    "state_transition": {
-        "need_transition": boolean,
-        "current_state": "当前状态值",
-        "recommended_state": "推荐状态值或null",
-        "transition_reason": "具体转换理由",
-        "confidence_level": "低|中|高"
-    },
-    "risk_assessment": {
-        "overall_risk_level": 0-5整数,
-        "suicide_risk": 0-5整数,
-        "self_harm_risk": 0-5整数,
-        "harm_others_risk": 0-5整数,
-        "risk_indicators": ["风险关键词数组"],
-        "emergency_required": boolean,
-        "risk_description": "风险描述"
-    },
-    "improvement_suggestions": ["建议数组"],
-    "next_focus": "下一轮重点"
-}
-```
-
-**重要提醒**：
-1. 所有评分必须基于学生的实际表现，有具体对话内容支撑
-2. 变化趋势要与当前状态进行对比
-3. 重点分析最近3轮对话中学生的表现变化
-4. 风险评估要格外谨慎和敏感
 """
 
     async def update_student_bot_state(self, student_bot, result: FlowControlResult):
