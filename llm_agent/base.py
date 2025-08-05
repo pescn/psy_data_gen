@@ -159,7 +159,7 @@ class ChatBot:
             response = await self.llm_client.chat.completions.create(
                 model=self.model,
                 messages=messages,
-                temperature=self.temperature,
+                # temperature=self.temperature,
                 max_tokens=self.max_tokens,
             )
 
@@ -277,7 +277,6 @@ class Agent(Generic[TContext, TResult]):
             response = await self.llm_client.chat.completions.parse(
                 model=self.model,
                 messages=messages,
-                temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 response_format=self.result_class,
             )
