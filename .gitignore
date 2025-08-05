@@ -13,3 +13,4 @@ output/
 .venv/
 .DS_Store
 uv.lock
+exports/
