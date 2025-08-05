@@ -136,7 +136,6 @@ class StudentBot(ChatBot, RiskAssessmentMixin):
 # 学生背景信息
 
 ## 基本信息
-- 姓名：{self.student_background.name}
 - 年龄：{self.student_background.age}岁
 - 性别：{self.student_background.gender}
 - 年级：{self.student_background.grade}

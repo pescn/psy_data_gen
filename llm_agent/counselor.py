@@ -5,8 +5,9 @@
 
 from typing import Dict, List, Any, Optional
 
-from llm_agent.base import ChatBot
+from llm_agent.base import ChatBot, convert_history_for_counselor
 from models import (
+    ConversationMessage,
     CounselorBackground,
     CounselorState,
     StudentBasicInfo,
@@ -61,7 +62,7 @@ class CounselorBot(ChatBot):
         self.typical_questions = self.approach_data.get("typical_questions", [])
 
     @property
-    def state_prompt(self, state: str) -> str:
+    def state_prompt(self) -> str:
         """引入与建立关系阶段的提示词"""
         introduction_prompt = f"""## 当前阶段：引入与建立关系阶段
 
@@ -171,7 +172,7 @@ class CounselorBot(ChatBot):
             CounselorState.EXPLORATION: exploration_prompt,
             CounselorState.ASSESSMENT: assessment_prompt,
             CounselorState.SCALE_RECOMMENDATION: scale_prompt,
-        }.get(state, "")
+        }.get(self.current_state, "")
 
     @property
     def system_prompt(self) -> str:
@@ -245,3 +246,12 @@ class CounselorBot(ChatBot):
             if self.counselor_background
             else None,
         }
+
+    def convert_history_to_messages(
+        self, conversation_history: List[ConversationMessage]
+    ) -> List[Dict[str, str]]:
+        """
+        将对话历史转换为咨询师Bot的视角
+        咨询师Bot视角：assistant=咨询师, user=学生
+        """
+        return convert_history_for_counselor(conversation_history)

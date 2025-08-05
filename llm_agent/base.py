@@ -274,12 +274,12 @@ class Agent(Generic[TContext, TResult]):
             raise ValueError("result_class must be set in subclass")
         try:
             messages = [{"role": "user", "content": self.prompt(context)}]
-            response = await self.llm_client.chat.completions.create(
+            response = await self.llm_client.chat.completions.parse(
                 model=self.model,
                 messages=messages,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
-                response_format={"type": "json_object"},
+                response_format=self.result_class,
             )
             resp_content = response.choices[0].message.content.strip()
             resp_data = self.clean_response_data(json.loads(resp_content))
@@ -287,7 +287,7 @@ class Agent(Generic[TContext, TResult]):
             return self.data
 
         except Exception as e:
-            print(resp_content)
+            # print(resp_content)
             raise RuntimeError(f"LLM API call failed: {str(e)}")
 
 
