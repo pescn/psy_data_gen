@@ -348,7 +348,7 @@ def main():
                 "请输入心理问题类型（可选）",
                 placeholder="例如：焦虑症、抑郁症等。",
             )
-        mode = "random" if generation_mode_selection == "随机生成" else "guided"
+        background_mode = "random" if generation_mode_selection == "随机生成" else "guided"
         st.markdown("---")
         st.subheader("2. 选择对话模式")
         mode = st.radio(
@@ -366,9 +366,9 @@ def main():
                 try:
                     manager = SessionManager(auto_mode=True)
                     background = BackgroundContext(mode="random")
-                    if mode == "guided":
+                    if background_mode == "guided":
                         background = BackgroundContext(
-                            mode=mode,
+                            mode=background_mode,
                             user_background=user_background_input,
                             psychological_issue=psychological_issue_input,
                         )
