@@ -167,7 +167,13 @@ class ChatBot:
 
             self.usage = response.usage
             current_span = trace.get_current_span()
-            current_span.set_attribute("gen_ai.response.reasoning_content", response.choices[0].message.reasoning_content)
+            current_span.add_event(
+                name="reasoning.generated",
+                attributes={
+                    "llm.reasoning": response.choices[0].message.reasoning_content,
+                    "llm.response": response.choices[0].message.content.strip()
+                },
+            )
             return response.choices[0].message.content.strip()
 
         except Exception as e:
@@ -291,7 +297,13 @@ class Agent(Generic[TContext, TResult]):
             self.data = self.result_class(**resp_data)
             self.usage = response.usage
             current_span = trace.get_current_span()
-            current_span.set_attribute("gen_ai.response.reasoning_content", response.choices[0].message.reasoning_content)
+            current_span.add_event(
+                name="reasoning.generated",
+                attributes={
+                    "llm.reasoning": response.choices[0].message.reasoning_content,
+                    "llm.response": response.choices[0].message.content.strip(),
+                },
+            )
             return self.data
 
         except Exception as e:
