@@ -10,6 +10,7 @@ from datetime import datetime
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel
+from opentelemetry import trace
 
 from models import ConversationMessage, CounselorState, EmotionState, RiskAssessment
 from settings import settings
@@ -165,8 +166,8 @@ class ChatBot:
             )
 
             self.usage = response.usage
-            print(f"Thinking Content: {response.choices[0].message.reasoning_content}")
-            print(f"Response Content: {response.choices[0].message.content}")
+            current_span = trace.get_current_span()
+            current_span.set_attribute("gen_ai.response.reasoning_content", response.choices[0].message.reasoning_content)
             return response.choices[0].message.content.strip()
 
         except Exception as e:
@@ -289,8 +290,8 @@ class Agent(Generic[TContext, TResult]):
             resp_data = self.clean_response_data(json.loads(resp_content))
             self.data = self.result_class(**resp_data)
             self.usage = response.usage
-            print(f"Thinking Content: {response.choices[0].message.reasoning_content}")
-            print(f"Response Content: {response.choices[0].message.content}")
+            current_span = trace.get_current_span()
+            current_span.set_attribute("gen_ai.response.reasoning_content", response.choices[0].message.reasoning_content)
             return self.data
 
         except Exception as e:
