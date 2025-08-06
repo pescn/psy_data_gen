@@ -7,17 +7,15 @@ from datetime import datetime
 import traceback
 import time
 
-# 从您的原始代码文件中导入核心类
-# 确保 interactive_session.py 在 Python 的可搜索路径中
 from interactive_session import SessionManager, ConversationMessage, CounselorState
 
-# ==============================================================================
-# 猴子补丁 (Monkey Patching) 区域
-# (与上一版相同，用于修复和增强 SessionManager)
-# ==============================================================================
 
 def _get_current_state_round_fixed(self) -> int:
-    if not self.counselor_bot or not self.counselor_bot.current_state or not self.counselor_state_history:
+    if (
+        not self.counselor_bot
+        or not self.counselor_bot.current_state
+        or not self.counselor_state_history
+    ):
         return 1
     current_state_value = self.counselor_bot.current_state.value
     count = 0
@@ -28,8 +26,10 @@ def _get_current_state_round_fixed(self) -> int:
             break
     return count if count > 0 else 1
 
+
 async def execute_flow_control_and_update(self):
     from llm_agent.flow_control import FlowControlContext
+
     current_state_round = self._get_current_state_round()
     flow_context = FlowControlContext(
         conversation_history=self.conversation_history,
@@ -47,15 +47,20 @@ async def execute_flow_control_and_update(self):
     self.flow_control_results.append(
         {"round": self.current_round, "flow_result": flow_result.model_dump()}
     )
-    await self.flow_control_agent.update_student_bot_state(self.student_bot, flow_result)
+    await self.flow_control_agent.update_student_bot_state(
+        self.student_bot, flow_result
+    )
     return flow_result
+
 
 def handle_state_transition_fixed(self, flow_result):
     state_transition = flow_result.state_transition
     should_end = False
     if state_transition.need_transition:
         history_entry = {
-            "round": self.current_round, "from_state": self.counselor_bot.current_state.value, "reason": state_transition.transition_reason
+            "round": self.current_round,
+            "from_state": self.counselor_bot.current_state.value,
+            "reason": state_transition.transition_reason,
         }
         if state_transition.recommended_state is None:
             history_entry["to_state"] = None
@@ -63,25 +68,41 @@ def handle_state_transition_fixed(self, flow_result):
         else:
             new_state = CounselorState(state_transition.recommended_state)
             history_entry["to_state"] = new_state.value
-            self.counselor_bot.update_state(new_state, state_transition.transition_reason)
+            self.counselor_bot.update_state(
+                new_state, state_transition.transition_reason
+            )
         self.state_transition_history.append(history_entry)
     return should_end
 
+
 async def export_session_data_fixed(self, save_to_file=True):
     session_data = {
-        "session_info": {"session_id": self.session_id, "start_time": self.session_start_time.isoformat(), "end_time": datetime.now().isoformat(), "total_rounds": self.current_round},
+        "session_info": {
+            "session_id": self.session_id,
+            "start_time": self.session_start_time.isoformat(),
+            "end_time": datetime.now().isoformat(),
+            "total_rounds": self.current_round,
+        },
         "background_info": self.background.model_dump() if self.background else None,
         "conversation_history": [msg.model_dump() for msg in self.conversation_history],
         "flow_control_results": self.flow_control_results,
         "state_transition_history": self.state_transition_history,
         "student_state_history": self.student_state_history,
         "counselor_state_history": self.counselor_state_history,
-        "final_states": {"student_final_state": self.student_bot.get_student_state() if self.student_bot else None, "counselor_final_state": self.counselor_bot.current_state.value if self.counselor_bot else None},
+        "final_states": {
+            "student_final_state": self.student_bot.get_student_state()
+            if self.student_bot
+            else None,
+            "counselor_final_state": self.counselor_bot.current_state.value
+            if self.counselor_bot
+            else None,
+        },
         "quality_assessment": await self.quality_assess(),
         "usages": self.usage_summary,
     }
     if save_to_file:
         import os
+
         export_dir = "exports"
         os.makedirs(export_dir, exist_ok=True)
         filename = f"{export_dir}/session_{self.session_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -90,22 +111,26 @@ async def export_session_data_fixed(self, save_to_file=True):
         print(f"会话数据已导出到: {filename}")
     return session_data
 
-if not hasattr(SessionManager, '_monkey_patched'):
-    setattr(SessionManager, '_get_current_state_round', _get_current_state_round_fixed)
-    setattr(SessionManager, 'execute_flow_control_and_update', execute_flow_control_and_update)
-    setattr(SessionManager, 'handle_state_transition', handle_state_transition_fixed)
-    setattr(SessionManager, 'export_session_data', export_session_data_fixed)
-    setattr(SessionManager, '_monkey_patched', True)
 
-# ==============================================================================
-# Streamlit UI 代码部分
-# ==============================================================================
+if not hasattr(SessionManager, "_monkey_patched"):
+    setattr(SessionManager, "_get_current_state_round", _get_current_state_round_fixed)
+    setattr(
+        SessionManager,
+        "execute_flow_control_and_update",
+        execute_flow_control_and_update,
+    )
+    setattr(SessionManager, "handle_state_transition", handle_state_transition_fixed)
+    setattr(SessionManager, "export_session_data", export_session_data_fixed)
+    setattr(SessionManager, "_monkey_patched", True)
+
 
 def run_async(awaitable):
     return asyncio.run(awaitable)
 
+
 def get_role_and_avatar(role: str):
     return ("🎓", "student") if role == "student" else ("👨‍⚕️", "assistant")
+
 
 def render_sidebar():
     with st.sidebar:
@@ -159,7 +184,10 @@ def render_conversation_history():
                     extra_info = f"<small>情绪: {msg.emotion}</small>"
                 elif msg.role == "counselor" and msg.state:
                     extra_info = f"<small>状态: {msg.state}</small>"
-                st.markdown(f"**第 {msg.round_number} 轮** - {extra_info}", unsafe_allow_html=True)
+                st.markdown(
+                    f"**第 {msg.round_number} 轮** - {extra_info}",
+                    unsafe_allow_html=True,
+                )
                 st.markdown(msg.content)
 
 
@@ -208,7 +236,7 @@ def render_end_of_session_summary():
         st.json(session_data.get("quality_assessment", "评估失败或未执行。"))
         st.subheader("成本与 Token 使用情况")
         st.markdown(usage_summary(session_data.get("usages", [])))
-        st.json(session_data.get("usages", []))
+        st.json(session_data.get("usages", []), expanded=False)
 
         # 直接保存到服务器 exports 目录
         export_dir = "exports"
@@ -230,17 +258,29 @@ def render_end_of_session_summary():
             mime="application/json",
         )
 
+
 def run_one_round():
     """封装一轮对话的核心逻辑，用于手动和自动模式的复用"""
     manager = st.session_state.manager
     try:
         # --- 咨询师回复 ---
-        counselor_response = run_async(manager.counselor_bot.chat(manager.conversation_history))
+        counselor_response = run_async(
+            manager.counselor_bot.chat(manager.conversation_history)
+        )
         counselor_msg = ConversationMessage(
-            role="counselor", content=counselor_response, state=manager.counselor_bot.current_state, round_number=manager.current_round
+            role="counselor",
+            content=counselor_response,
+            state=manager.counselor_bot.current_state,
+            round_number=manager.current_round,
         )
         manager.conversation_history.append(counselor_msg)
-        manager.counselor_state_history.append({"round": manager.current_round, "state": manager.counselor_bot.current_state.value, "message": counselor_response})
+        manager.counselor_state_history.append(
+            {
+                "round": manager.current_round,
+                "state": manager.counselor_bot.current_state.value,
+                "message": counselor_response,
+            }
+        )
 
         # --- 流程控制与状态更新 ---
         flow_result = run_async(manager.execute_flow_control_and_update())
@@ -253,13 +293,20 @@ def run_one_round():
         if should_end or manager.current_round >= manager.max_rounds:
             st.session_state.dialogue_finished = True
             with st.spinner("对话即将结束，正在进行最终评估..."):
-                session_data = run_async(manager.export_session_data(save_to_file=False))
+                session_data = run_async(
+                    manager.export_session_data(save_to_file=False)
+                )
                 st.session_state.session_data = session_data
         else:
             # --- 学生为下一轮做准备 ---
-            student_response = run_async(manager.student_bot.chat(manager.conversation_history))
+            student_response = run_async(
+                manager.student_bot.chat(manager.conversation_history)
+            )
             student_msg = ConversationMessage(
-                role="student", content=student_response, emotion=manager.student_bot.current_emotion, round_number=manager.current_round + 1
+                role="student",
+                content=student_response,
+                emotion=manager.student_bot.current_emotion,
+                round_number=manager.current_round + 1,
             )
             manager.conversation_history.append(student_msg)
             manager.current_round += 1
@@ -268,6 +315,7 @@ def run_one_round():
         st.error(f"在第 {manager.current_round} 轮对话中发生错误: {e}")
         st.error(traceback.format_exc())
         st.session_state.dialogue_finished = True
+
 
 def main():
     st.set_page_config(page_title="心理咨询对话生成器", layout="wide")
@@ -284,7 +332,10 @@ def main():
             "选择运行模式",
             ("手动模式", "自动模式"),
             horizontal=True,
-            captions=("每轮手动点击按钮，方便分析。", "一次性自动运行所有对话，无需干预。")
+            captions=(
+                "每轮手动点击按钮，方便分析。",
+                "一次性自动运行所有对话，无需干预。",
+            ),
         )
 
         if st.button("🚀 开始会话", type="primary"):
@@ -293,14 +344,17 @@ def main():
                     manager = SessionManager(auto_mode=True)
                     run_async(manager.initialize_session())
                     student_msg = ConversationMessage(
-                        role="student", content=manager.initial_question, emotion=manager.student_bot.current_emotion, round_number=1
+                        role="student",
+                        content=manager.initial_question,
+                        emotion=manager.student_bot.current_emotion,
+                        round_number=1,
                     )
                     manager.conversation_history.append(student_msg)
                     manager.current_round = 1
-                    
+
                     st.session_state.manager = manager
                     st.session_state.dialogue_finished = False
-                    st.session_state.mode = mode # 保存选择的模式
+                    st.session_state.mode = mode  # 保存选择的模式
                     st.success("背景生成完毕，第一轮对话已开始！")
                     st.rerun()
                 except Exception as e:
@@ -317,7 +371,9 @@ def main():
     elif st.session_state.mode == "手动模式":
         render_conversation_history()
         st.markdown("---")
-        button_text = f"➡️ 进行第 {st.session_state.manager.current_round} 轮 (咨询师回应)"
+        button_text = (
+            f"➡️ 进行第 {st.session_state.manager.current_round} 轮 (咨询师回应)"
+        )
         if st.button(button_text, type="primary"):
             with st.spinner(f"第 {st.session_state.manager.current_round} 轮进行中..."):
                 run_one_round()
@@ -327,13 +383,16 @@ def main():
     elif st.session_state.mode == "自动模式":
         render_conversation_history()
         st.markdown("---")
-        st.info(f"🤖 **自动模式运行中**... 当前正在处理第 {st.session_state.manager.current_round} 轮。")
+        st.info(
+            f"🤖 **自动模式运行中**... 当前正在处理第 {st.session_state.manager.current_round} 轮。"
+        )
         # 自动运行一轮
         run_one_round()
         # 等待2秒，方便用户观看
         time.sleep(2)
         # 强制页面刷新以进入下一轮循环
         st.rerun()
+
 
 if __name__ == "__main__":
     main()
