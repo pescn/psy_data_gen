@@ -11,7 +11,7 @@ dependencies = [
     "pydantic-settings>=2.10.1",
     "python-dotenv>=1.1.1",
     "rich>=14.1.0",
-    "streamlit>=1.47.0",
+    "streamlit>=1.48.0",
     "traceloop-sdk>=0.44.1",
 ]
 
