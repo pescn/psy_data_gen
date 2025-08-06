@@ -165,6 +165,8 @@ class ChatBot:
             )
 
             self.usage = response.usage
+            print(f"Thinking Content: {response.choices[0].message.reasoning_content}")
+            print(f"Response Content: {response.choices[0].message.content}")
             return response.choices[0].message.content.strip()
 
         except Exception as e:
@@ -287,6 +289,8 @@ class Agent(Generic[TContext, TResult]):
             resp_data = self.clean_response_data(json.loads(resp_content))
             self.data = self.result_class(**resp_data)
             self.usage = response.usage
+            print(f"Thinking Content: {response.choices[0].message.reasoning_content}")
+            print(f"Response Content: {response.choices[0].message.content}")
             return self.data
 
         except Exception as e:
