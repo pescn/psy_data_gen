@@ -339,6 +339,11 @@ class FlowControlAgent(
         issue_data = PSYCHOLOGICAL_ISSUES_DATA.get(
             student.current_psychological_issue, {}
         )
+        issue_str = (
+            f"{issue_data.get('name', '未知')} - {issue_data.get('description', '')}"
+            if issue_data
+            else student.current_psychological_issue
+        )
         approach_data = THERAPY_APPROACHES_DATA.get(counselor.therapy_approach, {})
 
         return f"""
@@ -349,7 +354,7 @@ class FlowControlAgent(
 - 性格特征：{", ".join(student.personality_traits)}
 
 ### 心理状况
-- 核心问题：{issue_data.get("name", "未知问题")} - {issue_data.get("description", "")}
+- 核心问题：{issue_str}
 - 症状描述：{student.symptom_description}
 - 家庭背景：{student.family_background}
 - 心理侧写：{student.psychological_profile}

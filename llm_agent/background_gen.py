@@ -13,7 +13,7 @@ from constants import (
     PSYCHOLOGICAL_ISSUES_DATA,
     THERAPY_APPROACHES_DATA,
 )
-from models import BackgroundInfo, BackgroundContext
+from models import BackgroundInfo, BackgroundContext, PsychologicalIssue
 
 background_format_prompt = """# 输出格式
 请返回一个完整的 Background 的 JSON对象，下面是其 Interface 结构：
@@ -131,5 +131,7 @@ class BackgroundGenerationAgent(Agent[BackgroundContext, BackgroundInfo]):
         """
         data["student_info"]["current_psychological_issue"] = (
             self.psychological_issue.value
+            if isinstance(self.psychological_issue, PsychologicalIssue)
+            else self.psychological_issue
         )
         return data

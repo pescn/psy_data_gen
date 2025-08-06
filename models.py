@@ -88,7 +88,7 @@ class StudentBackground(BaseModel):
     personality_traits: List[str] = Field(..., description="性格特征")
     psychological_profile: str = Field(..., description="心理侧写")
     hidden_personal_info: str = Field(..., description="隐形个人画像")
-    current_psychological_issue: PsychologicalIssue = Field(
+    current_psychological_issue: PsychologicalIssue | str = Field(
         ..., description="当前心理问题"
     )
     symptom_description: str = Field(..., description="症状描述")

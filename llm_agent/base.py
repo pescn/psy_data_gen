@@ -291,7 +291,7 @@ class Agent(Generic[TContext, TResult]):
 
         except Exception as e:
             # print(resp_content)
-            raise RuntimeError(f"LLM API call failed: {str(e)}")
+            raise RuntimeError(f"LLM API call failed: {str(e)}") from e
 
 
 class RiskAssessmentMixin:

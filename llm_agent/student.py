@@ -247,6 +247,11 @@ class StudentBot(ChatBot, RiskAssessmentMixin):
 
     def get_student_state(self) -> Dict[str, Any]:
         """获取学生当前状态信息"""
+        psychological_issue = (
+            self.student_background.current_psychological_issue.value
+            if isinstance(self.student_background, PsychologicalIssue)
+            else self.student_background.current_psychological_issue
+        )
         return {
             "current_round": self.current_round,
             "current_emotion": self.current_emotion.value,
@@ -255,9 +260,7 @@ class StudentBot(ChatBot, RiskAssessmentMixin):
             "information_revealed": self.information_revealed,
             "avoidance_tendency": self.avoidance_tendency,
             "resistance_level": self.resistance_level,
-            "psychological_issue": self.student_background.current_psychological_issue.value
-            if self.student_background
-            else None,
+            "psychological_issue": psychological_issue,
             "message_count": len(self.conversation_history)
             if hasattr(self, "conversation_history")
             else 0,

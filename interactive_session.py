@@ -181,7 +181,7 @@ class SessionManager:
             )
         except Exception as e:
             print_colored(f"❌ 背景生成失败: {str(e)}", Colors.FAIL)
-            sys.exit(1)
+            raise e
 
         # 初始化 Agents
         self.student_bot = StudentBot()

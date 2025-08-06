@@ -478,6 +478,11 @@ class QualityAssessmentAgent(Agent[QualityAssessmentContext, QualityAssessmentRe
         issue_data = PSYCHOLOGICAL_ISSUES_DATA.get(
             student.current_psychological_issue, {}
         )
+        issue_str = (
+            f"{issue_data.get('name', '未知')} - {issue_data.get('description', '')}"
+            if issue_data
+            else student.current_psychological_issue
+        )
         approach_data = THERAPY_APPROACHES_DATA.get(counselor.therapy_approach, {})
 
         return f"""## 背景信息：
@@ -485,7 +490,7 @@ class QualityAssessmentAgent(Agent[QualityAssessmentContext, QualityAssessmentRe
 - 基本信息：{student.age}岁，{student.grade}，{student.major}
 - 性格特征：{", ".join(student.personality_traits)}
 - 家庭背景：{student.family_background}
-- 心理问题：{issue_data.get("name", "未知")} - {issue_data.get("description", "")}
+- 心理问题：{issue_str}
 - 症状描述：{student.symptom_description}
 - 深层信息：{student.hidden_personal_info}
 
