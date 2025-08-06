@@ -7,7 +7,7 @@ import asyncio
 from collections import Counter
 import json
 import sys
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
 import os
@@ -162,16 +162,16 @@ class SessionManager:
         self.usages: list[CompletionUsage] = []
 
     @task(name="initialize_session", version=1)
-    async def initialize_session(self):
+    async def initialize_session(self, background: Optional[BackgroundContext] = None):
         """
         异步初始化会话，生成背景信息
         """
         print_header("背景信息生成")
         print_colored("正在生成背景信息...", Colors.OKCYAN)
+        if background is None:
+            background = BackgroundContext(mode="random")
         try:
-            background_result = await self.background_agent.execute(
-                BackgroundContext(mode="random")
-            )
+            background_result = await self.background_agent.execute(background)
             self.background = background_result
             self.initial_question = background_result.initial_question
             self.usages.append(self.background_agent.usage)

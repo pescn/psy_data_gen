@@ -8,6 +8,7 @@ import traceback
 import time
 
 from interactive_session import SessionManager, ConversationMessage, CounselorState
+from models import BackgroundContext
 
 
 def _get_current_state_round_fixed(self) -> int:
@@ -321,13 +322,35 @@ def main():
     st.set_page_config(page_title="心理咨询对话生成器", layout="wide")
     st.title("🤖 心理咨询对话生成器")
 
-    # 渲染侧边栏（每次都会重新渲染以保持最新状态）
     render_sidebar()
 
     # --- 阶段 1: 初始化 ---
     if "manager" not in st.session_state:
-        st.info("请选择运行模式，然后开始会话。")
-        # 【新增】模式选择
+        st.subheader("1. 配置背景生成方式")
+        generation_mode_selection = st.radio(
+            "选择背景生成方式",
+            ("随机生成", "自定义配置"),
+            horizontal=True,
+            captions=(
+                "完全自动生成学生背景和心理问题。",
+                "允许您输入关键信息来影响生成结果。",
+            ),
+        )
+        user_background_input = ""
+        psychological_issue_input = ""
+        if generation_mode_selection == "自定义配置":
+            user_background_input = st.text_area(
+                "请输入额外的背景描述和要求（可选）",
+                placeholder="例如：学生来自单亲家庭，性格内向，最近感到焦虑。",
+                height=100,
+            )
+            psychological_issue_input = st.text_input(
+                "请输入心理问题类型（可选）",
+                placeholder="例如：焦虑症、抑郁症等。",
+            )
+        mode = "random" if generation_mode_selection == "随机生成" else "guided"
+        st.markdown("---")
+        st.subheader("2. 选择对话模式")
         mode = st.radio(
             "选择运行模式",
             ("手动模式", "自动模式"),
@@ -342,7 +365,14 @@ def main():
             with st.spinner("正在初始化会话，生成背景信息..."):
                 try:
                     manager = SessionManager(auto_mode=True)
-                    run_async(manager.initialize_session())
+                    background = BackgroundContext(mode="random")
+                    if mode == "guided":
+                        background = BackgroundContext(
+                            mode=mode,
+                            user_background=user_background_input,
+                            psychological_issue=psychological_issue_input,
+                        )
+                    run_async(manager.initialize_session(background))
                     student_msg = ConversationMessage(
                         role="student",
                         content=manager.initial_question,
